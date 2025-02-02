@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "./node_modules/three/build/three.module.js",
+					"three/examples/jsm/loaders/GLTFLoader.js": "./node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+					"cannon-es": "./node_modules/cannon-es/dist/cannon-es.js",
+					"dat.gui": "./node_modules/dat.gui/build/dat.gui.module.js"
+				}
+			}
+		</script>
+		<meta charset="utf-8">
+		<title>Bouncing Ball Bonanza</title>
+		<link rel="stylesheet" href="styles.css">
+		<link rel="icon" type="image/png" href="./assets/logo.png">
+		<link rel="shortcut icon" type="image/png" href="./assets/logo.png">
+		<style>
+			@font-face {
+				font-family: 'Poppins';
+				src: url('./assets/fonts/Poppins-Medium.ttf') format('truetype');
+				font-weight: normal;
+				font-style: normal;
+			}
+			#backgroundVideo {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				object-fit: cover; 
+				z-index: -1; 
+			}
+			#contentWrapper {
+				position: absolute;
+				top: 0;
+				right: 0; 
+				width: 30%; 
+				height: 100%;
+				background-color: rgba(0, 0, 0, 0.4);
+				display: flex;
+				flex-direction: column;
+				justify-content: center; 
+				align-items: center; 
+				z-index: 100;
+			}
+			#startScreen {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background-color: black;
+				background-image: url('./assets/menu.jpg');
+				background-size: cover;
+				background-position: center;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				z-index: 2000;
+			}
+
+			#buttonsWrapper {
+				display: flex;
+				flex-direction: column; 
+				gap: 10px; 
+				width: 100%;
+				align-items: center; 
+			}
+			#gameTitle {
+				color: white;
+				font-size: 48px;
+				font-family: 'Arial', sans-serif;
+				margin-bottom: 40px;
+				text-align: center;
+				text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+			}
+
+			#classicMode, #challengeMode {
+				font-family: "Poppins", serif;
+				padding: 15px 20px;
+				font-size: 24px;
+				color: white;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+				transition: background-color 0.3s;
+				margin: 10px;
+				width: 250px;
+			}
+
+			#classicMode {
+				background-color: #4CAF50;
+			}
+
+			#challengeMode {
+				background-color: #f44336;
+			}
+
+			#classicMode:hover {
+				background-color: #45a049;
+			}
+
+			#challengeMode:hover {
+				background-color: #da190b;
+			}
+
+			#gameOverScreen {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background-color: rgba(255, 0, 0, 0.7);
+				display: none;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				z-index: 2000;
+				color: white;
+				font-family: 'Arial', sans-serif;
+			}
+
+			#gameOverTitle {
+				font-size: 48px;
+				margin-bottom: 20px;
+			}
+
+			#finalScore {
+				font-size: 36px;
+				margin-bottom: 30px;
+			}
+			#highScore {
+				font-size: 36px;
+				margin-bottom: 30px;
+			}
+			#playAgainBtn {
+				padding: 15px 40px;
+				font-size: 24px;
+				color: white;
+				background-color: #4CAF50;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+				transition: background-color 0.3s;
+			}
+
+			#playAgainBtn:hover {
+				background-color: #45a049;
+			}
+
+			#helpOverlay {
+				position: fixed;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				background-color: rgba(0, 0, 0, 0.9);
+				color: white;
+				padding: 20px;
+				border-radius: 10px;
+				font-family: Arial, sans-serif;
+				font-size: 16px;
+				display: none;
+				z-index: 1000;
+				max-width: 600px;
+				max-height: 80vh;
+				overflow-y: auto;
+			}
+
+			#helpOverlay h2 {
+				color: #4CAF50;
+				margin-bottom: 20px;
+			}
+
+			#helpOverlay h3 {
+				color: #2196F3;
+			}
+
+			#helpOverlay ul {
+				margin-left: 20px;
+			}
+			#gameLogo {
+				width: 600px; 
+				height: auto; 
+			}
+			#spotlightEnabled {
+				width: 18px;
+				height: 18px;
+				cursor: pointer;
+			}
+
+			#fpsMode {
+				margin-left: 10px;
+				padding: 5px;
+				font-size: 14px;
+				border-radius: 4px;
+				background-color: #fff;
+				border: 1px solid #ccc;
+			}
+
+			.setting-label {
+				color: white;
+				display: block;
+				margin: 10px 0;
+				font-family: "Poppins", serif;
+			}
+
+		</style>
+	</head>
+	<body>
+		<div id="startScreen">
+			<div id="contentWrapper">
+				<img id="gameLogo" src="./assets/logo.png" alt="Game Logo">
+				<div id="buttonsWrapper">
+					<button id="classicMode">Normal Mode</button>
+					<button id="challengeMode">Hard Mode</button>
+					<div class="settings-container">
+						<label class="setting-label">
+							<input type="checkbox" id="spotlightEnabled" checked>
+							Enable Spotlight
+						</label>
+						<label class="setting-label">
+							FPS Mode:
+							<select id="fpsMode">
+								<option value="60">60 FPS</option>
+								<option value="120">120 FPS</option>
+								<option value="30">30 FPS</option>
+							</select>
+						</label>
+					</div>
+		
+		
+				</div>
+			</div>
+			<video autoplay muted loop id="backgroundVideo">
+				<source src="./assets/start.mp4" type="video/mp4">
+				Your browser does not support the video tag.
+			</video>
+		</div>
+		
+		<div id="gameOverScreen">
+			<div id="gameOverTitle">GAME OVER</div>
+			<div id="finalScore">Final Score: 0</div>
+			<div id="highScore">High Score: 0</div>
+			<button id="playAgainBtn">Play Again</button>
+		</div>
+
+		<div id="helpOverlay">
+			<h2>Controls Guide</h2>
+			
+			<h3>Game Modes</h3>
+			<p>• Normal Mode: target area oscillates in 1 dimension</p>
+			<p>• Hard Mode: target area oscillates in 2 dimensions</p>
+
+			<h3>Basic Controls</h3>
+			<p>• A - D: Move the bouncer platform left and right</p>
+			<p>• W: Toggle between bouncer materials(sand surface will consume more energy from balls)</p>
+			<p>• R: Reset the rotation of the bouncer</p>
+			<p>• Arrow Keys: Rotate the bouncer</p>
+			<p>• Spacebar: spawn bonus cube at center(5 seconds cooldown)</p>
+			<p>• Q - E: move the bonus cube</p>
+			<p>• P: Go to name assembly part</p>
+			<p>• H: Show/hide help menu</p>
+			<p>• X: Switch between shadings</p>
+			<p>• Z: Switch between water shadings</p>
+			<p>• O: Switch between day and night</p>
+			<p>• Backspace: Stop/resume timer</p>
+
+			<h3>Rotation/Translation (C key cycles through modes)</h3>
+			<p>• Camera Mode (1st press of C):</p>
+			<ul>
+				<p>- T/U: Adjust X position</p>
+				<p>- G/J: Adjust Y position</p>
+				<p>- B/M: Adjust Z position</p>
+				<p>- Numpad 7/9: Rotate X axis</p>
+				<p>- Numpad 4/6: Rotate Y axis</p>
+				<p>- Numpad 1/3: Rotate Z axis</p>
+				<p>- V: Reset To Default</p>
+			</ul>
+
+			<p>• Spotlight Mode (2nd press of C):</p>
+			<ul>
+				<p>- Adjusts spotlight position and direction</p>
+				<p>- Same controls as Camera Mode</p>
+				<p>- Extra: Y/N: Adjust spotlight intensity</p>
+				<p>- Extra: Numpad 2/8: Adjust ambient intensity</p>
+			</ul>
+
+			<p>• Object Mode (3rd press of C):</p>
+			<ul>
+				<p>- Click on any object to select(except cart, boat and lighthouse)</p>
+				<p>- Same controls to adjust position/rotation</p>
+			</ul>
+
+			<h3>Scoring</h3>
+			<p>• Points are awarded based on which part of the target the ball lands</p>
+			<p>• Spawn and hit the cube to merge and get triple points</p>
+			<p>• If the cube falls without merging, you lose 20 points</p>
+			<p>• Inner circle: 100 points</p>
+			<p>• Outer circles: Decreasing points (60, 50, 40, 30, 20, 10)</p>
+			<p>• If the ball bounces the ground second time, it vanishes</p>
+			<p>• Get as many points as you can in 60 seconds!</p>
+		</div>
+
+		<script src="glsl/shaders.js"></script>
+		<script type="module" src="js/main.js"></script>
+	</body>
+</html>
